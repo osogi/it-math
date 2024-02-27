@@ -94,10 +94,14 @@ void processNet(net_t* nt) {
         dmax = 0;
         for (int nx = 0; nx < numb_block; nx++) {
             dm[nx] = 0;
-#pragma omp parallel for shared(nt, nx, dm)
-            for (int i = 0; i < nx + 1; i++) {
-                int j = nx - i;
-                double d = processBlock(nt, i, j);
+
+            int i, j;
+            double d;
+
+#pragma omp parallel for shared(nt, nx, dm) private(i, j, d)
+            for (i = 0; i < nx + 1; i++) {
+                j = nx - i;
+                d = processBlock(nt, i, j);
                 if (dm[i] < d)
                     dm[i] = d;
             } // конец параллельной области
@@ -105,10 +109,13 @@ void processNet(net_t* nt) {
         // затухание волны
 
         for (int nx = numb_block - 2; nx >= 0; nx--) {
-#pragma omp parallel for shared(nt, nx, dm)
-            for (int i = numb_block - nx - 1; i < numb_block; i++) {
-                int j = numb_block + ((numb_block - 2) - nx) - i;
-                double d = processBlock(nt, i, j);
+            int i, j;
+            double d;
+
+#pragma omp parallel for shared(nt, nx, dm) private(i, j, d)
+            for (i = numb_block - nx - 1; i < numb_block; i++) {
+                j = numb_block + ((numb_block - 2) - nx) - i;
+                d = processBlock(nt, i, j);
                 if (dm[i] < d)
                     dm[i] = d;
             } // конец параллельной области
