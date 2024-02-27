@@ -128,20 +128,47 @@ void processNet(net_t* nt) {
     } while (dmax > EPS);
 }
 
+double run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
+    omp_set_num_threads(threads_num);
+
+    net_t* nt = create_net_t(sz, f, u);
+    // printf("\n####### Init ########\n");
+    // print_tb(nt->u, nt->sz);
+
+    double t1, t2, dt;
+    t1 = omp_get_wtime();
+    processNet(nt);
+    t2 = omp_get_wtime();
+    dt = t2 - t1;
+
+    // printf("\n####### Result ########\n");
+    // print_tb(nt->u, nt->sz);
+
+    // net_t* ntcheck = create_net_t(sz, u, u);
+    // printf("\n####### Real value ###########\n");
+    // print_tb(ntcheck->f, ntcheck->sz);
+
+    return dt;
+}
+
 int main(int argc, char** argv) {
     fun_xy f = d_kx3_p_2ky3;
     fun_xy u = kx3_p_2ky3;
-    net_t* nt = create_net_t(10, f, u);
-    printf("\n####### Init ########\n");
-    print_tb(nt->u, nt->sz);
 
-    printf("\n####### Result ########\n");
-    processNet(nt);
-    print_tb(nt->u, nt->sz);
+    size_t sz[] = {100, 200, 300, 500, 1000, 2000};
+    int threads[] = {1, 8};
 
-    net_t* ntcheck = create_net_t(10, u, u);
-    printf("\n####### Real value ###########\n");
-    print_tb(ntcheck->f, ntcheck->sz);
+    size_t lsz = sizeof(sz) / sizeof(sz[0]);
+    int lthreads = sizeof(threads) / sizeof(threads[0]);
+
+    for (int i = 0; i < lthreads; i++) {
+        int thr = threads[i];
+        for (int j = 0; j < lsz; j++) {
+            size_t s = sz[j];
+            double tm = run_test(s, thr, f, u);
+            printf("Time for sz = %lu, threads = %d: %7.3fs. \n", s, thr, tm);
+        }
+    }
 
     return 0;
 }
