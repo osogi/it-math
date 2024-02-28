@@ -11,7 +11,12 @@ typedef struct _net_t {
     double** f;
 } net_t;
 
-#define BLOCK_SZ 16
+typedef struct _test_res_t {
+    size_t iter;
+    double t;
+} test_res_t;
+
+#define BLOCK_SZ 64
 #define EPS      0.1
 
 typedef double (*fun_xy)(double, double);
@@ -94,7 +99,8 @@ static double processBlock(net_t* nt, int a, int b) {
     return dm;
 }
 
-void processNet(net_t* nt) {
+size_t processNet(net_t* nt) {
+    size_t iter = 0;
     size_t work_sz = nt->sz - 2;
     int numb_block = work_sz / BLOCK_SZ;
     if (BLOCK_SZ * numb_block != work_sz)
@@ -103,6 +109,7 @@ void processNet(net_t* nt) {
     double* dm = calloc(numb_block, sizeof(*dm));
 
     do {
+        iter++;
         dmax = 0;
         for (int nx = 0; nx < numb_block; nx++) {
             dm[nx] = 0;
@@ -139,22 +146,24 @@ void processNet(net_t* nt) {
         // <определение погрешности вычислений>
     } while (dmax > EPS);
     free(dm);
+
+    return iter;
 }
 
-double run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
+test_res_t run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
     omp_set_num_threads(threads_num);
-
     net_t* nt = create_net_t(sz, f, u);
     // printf("\n####### Init ########\n");
     // print_tb(nt->u, nt->sz);
 
     double t1, t2, dt;
     t1 = omp_get_wtime();
-    processNet(nt);
+    size_t iter = processNet(nt);
     t2 = omp_get_wtime();
     dt = t2 - t1;
 
     free_net_t(nt);
+
     // printf("\n####### Result ########\n");
     // print_tb(nt->u, nt->sz);
 
@@ -162,14 +171,17 @@ double run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
     // printf("\n####### Real value ###########\n");
     // print_tb(ntcheck->f, ntcheck->sz);
 
-    return dt;
+    test_res_t res;
+    res.iter = iter;
+    res.t = dt;
+    return res;
 }
 
 int main(int argc, char** argv) {
     fun_xy f = d_kx3_p_2ky3;
     fun_xy u = kx3_p_2ky3;
 
-    size_t sz[] = {100, 200, 300, 500, 1000, 2000};
+    size_t sz[] = {100, 200, 300, 500, 1000, 2000, 3000};
     int threads[] = {1, 8};
 
     size_t lsz = sizeof(sz) / sizeof(sz[0]);
@@ -179,8 +191,8 @@ int main(int argc, char** argv) {
         int thr = threads[i];
         for (int j = 0; j < lsz; j++) {
             size_t s = sz[j];
-            double tm = run_test(s, thr, f, u);
-            printf("Time for sz = %lu, threads = %d: %7.3fs. \n", s, thr, tm);
+            test_res_t tm = run_test(s, thr, f, u);
+            printf("Res for sz = %4lu, threads = %d: %10lu | %7.2f s. \n", s, thr, tm.iter, tm.t);
         }
     }
 
