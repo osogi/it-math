@@ -31,6 +31,12 @@ double** create_double_2d_arr(size_t sz) {
     return res;
 }
 
+void free_double_2d_arr(double** arr, size_t sz) {
+    for (int i = 0; i < sz; i++)
+        free(arr[i]);
+    return free(arr);
+}
+
 net_t* create_net_t(size_t sz, fun_xy f, fun_xy u) {
     net_t* res = malloc(sizeof(*res));
     res->sz = sz;
@@ -49,6 +55,12 @@ net_t* create_net_t(size_t sz, fun_xy f, fun_xy u) {
         }
     }
     return res;
+}
+
+void free_net_t(net_t* nt) {
+    free_double_2d_arr(nt->u, nt->sz);
+    free_double_2d_arr(nt->f, nt->sz);
+    return free(nt);
 }
 
 void print_tb(double** tb, size_t sz) {
@@ -126,6 +138,7 @@ void processNet(net_t* nt) {
                 dmax = dm[i];
         // <определение погрешности вычислений>
     } while (dmax > EPS);
+    free(dm);
 }
 
 double run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
@@ -141,6 +154,7 @@ double run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
     t2 = omp_get_wtime();
     dt = t2 - t1;
 
+    free_net_t(nt);
     // printf("\n####### Result ########\n");
     // print_tb(nt->u, nt->sz);
 
