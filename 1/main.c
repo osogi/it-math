@@ -29,6 +29,10 @@ double d_kx3_p_2ky3(double x, double y) { return 6000 * x + 12000 * y; }
 
 double kx3_p_2ky3(double x, double y) { return 1000 * pow(x, 3) + 2000 * pow(y, 3); }
 
+double d_book(double x, double y) { return 0; }
+
+double book(double x, double y) { return (1 - 2 * y) * (1 - 2 * x) * 100; }
+
 double** create_double_2d_arr(size_t sz) {
     double** res = calloc(sz, sizeof(*res));
     for (int i = 0; i < sz; i++)
@@ -162,14 +166,32 @@ test_res_t run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
     t2 = omp_get_wtime();
     dt = t2 - t1;
 
-    free_net_t(nt);
-
     // printf("\n####### Result ########\n");
     // print_tb(nt->u, nt->sz);
 
     // net_t* ntcheck = create_net_t(sz, u, u);
     // printf("\n####### Real value ###########\n");
     // print_tb(ntcheck->f, ntcheck->sz);
+
+    // double mx = -INFINITY;
+    // double mn = INFINITY;
+    // double sm = 0;
+
+    // for (int i = 0; i < nt->sz; i++) {
+    //     for (int j = 0; j < nt->sz; j++) {
+    //         ntcheck->u[i][j] = ntcheck->f[i][j] - nt->u[i][j];
+    //         sm += fabs(ntcheck->u[i][j]);
+    //         mx = fmax(mx, ntcheck->u[i][j]);
+    //         mn = fmin(mn, ntcheck->u[i][j]);
+    //     }
+    // }
+
+    // printf("\n####### Difference ###########\n");
+    // print_tb(ntcheck->u, ntcheck->sz);
+    // printf("min = %f | max = %f \n", mn, mx);
+    // printf("avr = %f \n", sm / (nt->sz * nt->sz));
+
+    free_net_t(nt);
 
     test_res_t res;
     res.iter = iter;
@@ -178,8 +200,8 @@ test_res_t run_test(size_t sz, int threads_num, fun_xy f, fun_xy u) {
 }
 
 int main(int argc, char** argv) {
-    fun_xy f = d_kx3_p_2ky3;
-    fun_xy u = kx3_p_2ky3;
+    fun_xy f = d_kx3_p_2ky3; // d_book;
+    fun_xy u = kx3_p_2ky3;   // book;
 
     size_t sz[] = {100, 200, 300, 500, 1000, 2000, 3000};
     int threads[] = {1, 8};
