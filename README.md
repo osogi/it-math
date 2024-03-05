@@ -1,2 +1,2 @@
 # Tasks status
-- [Task-1](1/): WIP
+- [Task-1](1/): Done
