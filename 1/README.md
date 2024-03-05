@@ -3,36 +3,36 @@
 **Гипотеза о результатах эксперимента**
 
 Введём несколько обозначений:
-- $t_n(x)$ - сколько времени в условных единицах времени занимает операция $x$ при выполнении на $n$ вычислительных элементах. 
-- $net\_size$ - размер ребра сетки, поданной на вход алгоритму.
-- $BLOCK\_SIZE$ - размер ребра блока.
-- $iter$ - кол-во итераций внешнего цикла в функции `processNet()`
-- $ceil(x)$ - округлить $x$ в большую сторону 
-- $block\_num$ = $ceil(net\_size / BLOCK\_SIZE)$ - 
+- $`t_n(x)`$ - сколько времени в условных единицах времени занимает операция $x$ при выполнении на $n$ вычислительных элементах. 
+- $`net\_size`$ - размер ребра сетки, поданной на вход алгоритму.
+- $`BLOCK\_SIZE`$ - размер ребра блока.
+- $`iter`$ - кол-во итераций внешнего цикла в функции `processNet()`
+- $`ceil(x)`$ - округлить $x$ в большую сторону 
+- $`block\_num`$ = $`ceil(net\_size / BLOCK\_SIZE)`$ - 
 отображает сколько нужно блоков, чтобы покрыть ребро сетки.
 
 
 
-$t_*(processBlock) \approx k*BLOCK\_SIZE^2,\ k \in \R$
+$`t_*(processBlock) \approx k*BLOCK\_SIZE^2,\ k \in R`$
 
-$t_1(processNet) \approx 
+$`t_1(processNet) \approx 
 iter*( 
     t_*(processBlock)*block\_num^2 + c*block\_num),
-    \ c \in \R $
+    \ c \in R `$
 
-$t_n(processNet) \approx 
+$`t_n(processNet) \approx 
 iter*( 
     \displaystyle\sum_{i=1}^{block\_num-1}
     t_*(processBlock)*ceil(i/n) +
     \displaystyle\sum_{i=1}^{block\_num}
     t_*(processBlock)*ceil(i/n)
-    + c*block\_num)$ 
+    + c*block\_num)`$ 
     
-$ = iter*(  
+$` = iter*(  
     2*t_*(processBlock)*\displaystyle\sum_{i=1}^{block\_num-1}
     ceil(i/n) +  
     t_*(processBlock)*ceil(block\_num/n) + c*block\_num),
-    \ c \in \R$
+    \ c \in R`$
 
 
 На основе этих расчётов была построена таблица для расчётов предположительного ускорения.
