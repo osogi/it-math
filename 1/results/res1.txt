@@ -1,0 +1,16 @@
+Res for sz =  100, threads = 1:       2285 |    0.24 s. 
+Res for sz =  200, threads = 1:       4262 |    1.73 s. 
+Res for sz =  300, threads = 1:       5315 |    4.89 s. 
+Res for sz =  500, threads = 1:       6810 |   17.78 s. 
+Res for sz = 1000, threads = 1:       8527 |   91.70 s. 
+Res for sz = 2000, threads = 1:       9617 |  467.43 s. 
+Res for sz = 3000, threads = 1:      10018 | 1160.70 s. 
+
+Res for sz =  100, threads = 8:       2285 |    0.22 s. 
+Res for sz =  200, threads = 8:       4262 |    1.24 s. 
+Res for sz =  300, threads = 8:       5315 |    2.54 s. 
+Res for sz =  500, threads = 8:       6810 |    6.50 s. 
+Res for sz = 1000, threads = 8:       8527 |   26.75 s. 
+Res for sz = 2000, threads = 8:       9617 |  106.95 s. 
+Res for sz = 3000, threads = 8:      10018 |  252.54 s. 
+
