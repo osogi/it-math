@@ -47,8 +47,7 @@ class SVDSimple:
     # source http://www.cs.yale.edu/homes/el327/datamining2013aFiles/07_singular_value_decomposition.pdf
 
     def __init__(self, is_multistart: bool = True, min_iter: int = 10, max_time: float = 100) -> None:
-        self.check_count: int = 10
-        self.eps: numpy.float32 = numpy.float32(0.01 * self.check_count)
+        self.eps: numpy.float32 = numpy.float32(0.01)
         self.min_iter: int = min_iter
         self.is_multistart: bool = is_multistart
         self.max_time = max_time
@@ -80,18 +79,17 @@ class SVDSimple:
             return numpy.random.normal(0, 1, size=ln).reshape((ln, 1))
 
     def get_singular_value(self, a: numpy.matrix, timeout: float) -> tuple[numpy.ndarray, numpy.float32, numpy.ndarray]:
-        end_t = time.time() + timeout
         x: numpy.ndarray = self.get_first_x(a)
         b = a.T * a
 
         i = 0
+        end_t = time.time() + timeout
         while time.time() < end_t:
-            old_x = x
+            # old_x = x
             x = b * x
-            if i % self.check_count == 0:
-                x = x / numpy.linalg.norm(x)
-                if (i > self.min_iter) and (self.get_delta(old_x, x) > self.eps):
-                    break
+            x = x / numpy.linalg.norm(x)
+            # if (i > self.min_iter) and (self.get_delta(old_x, x) > self.eps):
+            #     break
             i += 1
 
         v: numpy.ndarray = x / numpy.linalg.norm(x)
