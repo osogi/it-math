@@ -30,12 +30,89 @@ class SVDdata:
 
 
 class SVDer(Protocol):
-    def svd(self, a: numpy.matrix) -> SVDdata: ...
+    def svd(self, a: numpy.matrix, k: int) -> SVDdata: ...
 
 
 class SVDStadartLibrary:
-    def svd(self, a: numpy.matrix) -> SVDdata:
-        return SVDdata.new(numpy.linalg.svd(a))
+    def svd(self, a: numpy.matrix, k: int) -> SVDdata:
+        s: SVDdata = SVDdata.new(numpy.linalg.svd(a))
+        s.U = numpy.matrix(s.U.compress([True] * k, axis=1))
+        s.S = s.S[:k]
+        s.Vh = numpy.matrix(s.Vh.compress([True] * k, axis=0))
+        return s
+
+
+class SVDSimple:
+    # source http://www.cs.yale.edu/homes/el327/datamining2013aFiles/07_singular_value_decomposition.pdf
+
+    def __init__(self, is_multistart: bool = True, min_iter: int = 10, max_iter: int = 100) -> None:
+        self.check_count: int = 10
+        self.eps: numpy.float32 = numpy.float32(0.01 * self.check_count)
+        self.min_iter: int = min_iter
+        self.max_iter: int = max_iter
+        self.is_multistart: bool = is_multistart
+
+    def get_delta(self, x1: numpy.ndarray, x2: numpy.ndarray):
+        x1 = x1 / numpy.linalg.norm(x1)
+        x2 = x2 / numpy.linalg.norm(x2)
+        a = abs(x2 - x1).max()
+        return a
+
+    def get_first_x(self, a: numpy.matrix) -> numpy.ndarray:
+        ln = a.shape[1]
+        if self.is_multistart:
+            xs: list[numpy.ndarray] = [numpy.zeros((ln, 1), dtype=numpy.float32) for _ in range(ln)]
+            b = a.T * a
+
+            max_x = xs[0]
+            max_delta = -1
+            for i in range(ln):
+                xs[i][i] = 1
+                buf_x = b * xs[i]
+                buf_delta = self.get_delta(buf_x, xs[i])
+                if buf_delta > max_delta:
+                    max_x = buf_x
+                    max_delta = buf_delta
+
+            return max_x
+        else:
+            return numpy.random.normal(0, 1, size=ln).reshape((ln, 1))
+
+    def get_singular_value(self, a: numpy.matrix) -> tuple[numpy.ndarray, numpy.float32, numpy.ndarray]:
+        x: numpy.ndarray = self.get_first_x(a)
+        b = a.T * a
+
+        for i in range(self.max_iter):
+            old_x = x
+            x = b * x
+            if i % self.check_count == 0:
+                x = x / numpy.linalg.norm(x)
+                if (i > self.min_iter) and (self.get_delta(old_x, x) > self.eps):
+                    break
+
+        v: numpy.ndarray = x / numpy.linalg.norm(x)
+        u: numpy.ndarray = a * v
+        sigma: numpy.float32 = numpy.linalg.norm(u)
+        u = u / sigma
+        return (u, sigma, v)
+
+    def svd(self, a: numpy.matrix, k: int) -> SVDdata:
+        s: SVDdata = SVDdata()
+        U = []
+        S = []
+        V = []
+
+        for i in range(k):
+            u, sigma, v = self.get_singular_value(a)
+            U.append(u.T)
+            S.append(sigma)
+            V.append(v.T)
+            a = numpy.matrix(a - u * v.T * sigma)
+
+        s.U = numpy.matrix(numpy.stack(U, axis=0), dtype=numpy.float32).T
+        s.S = numpy.array(S, dtype=numpy.float32)
+        s.Vh = numpy.matrix(numpy.stack(V, axis=0), dtype=numpy.float32)
+        return s
 
 
 COMRESS_STRUCT_HEADER_SIZE = 0x10
@@ -160,10 +237,7 @@ def compress(
     svddatas: list[SVDdata] = []
 
     for m in matrixs:
-        s = svder.svd(m)  # U S Vh
-        s.U = numpy.matrix(s.U.compress([True] * k, axis=1))
-        s.S = s.S[:k]
-        s.Vh = numpy.matrix(s.Vh.compress([True] * k, axis=0))
+        s = svder.svd(m, k)  # U S Vh
         svddatas.append(s)
 
     return CompressedData.new(svddatas, img.mode)
@@ -227,13 +301,12 @@ def main():
         if method_str == METHOD_NUMPY:
             svder = SVDStadartLibrary()
         elif method_str == METHOD_SIMPLE:
-            ...
+            svder = SVDSimple(is_multistart=True)
         elif method_str == METHOD_ADVANCED:
             ...
         else:
             print(f"METHOD={method_str} is not supported")
             exit(1)
-
         cd = compress(img, finalsize, svder)
         cd.save(outfile)
         print(f"[Compressed]: {filename_and_sz(infile)} -> {filename_and_sz(outfile)}")
