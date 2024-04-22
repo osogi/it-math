@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import time
 from typing import Any, Dict, NamedTuple, Protocol
 import PIL.Image
 import numpy
@@ -45,12 +46,12 @@ class SVDStadartLibrary:
 class SVDSimple:
     # source http://www.cs.yale.edu/homes/el327/datamining2013aFiles/07_singular_value_decomposition.pdf
 
-    def __init__(self, is_multistart: bool = True, min_iter: int = 10, max_iter: int = 100) -> None:
+    def __init__(self, is_multistart: bool = True, min_iter: int = 10, max_time: float = 100) -> None:
         self.check_count: int = 10
         self.eps: numpy.float32 = numpy.float32(0.01 * self.check_count)
         self.min_iter: int = min_iter
-        self.max_iter: int = max_iter
         self.is_multistart: bool = is_multistart
+        self.max_time = max_time
 
     def get_delta(self, x1: numpy.ndarray, x2: numpy.ndarray):
         x1 = x1 / numpy.linalg.norm(x1)
@@ -78,17 +79,20 @@ class SVDSimple:
         else:
             return numpy.random.normal(0, 1, size=ln).reshape((ln, 1))
 
-    def get_singular_value(self, a: numpy.matrix) -> tuple[numpy.ndarray, numpy.float32, numpy.ndarray]:
+    def get_singular_value(self, a: numpy.matrix, timeout: float) -> tuple[numpy.ndarray, numpy.float32, numpy.ndarray]:
+        end_t = time.time() + timeout
         x: numpy.ndarray = self.get_first_x(a)
         b = a.T * a
 
-        for i in range(self.max_iter):
+        i = 0
+        while time.time() < end_t:
             old_x = x
             x = b * x
             if i % self.check_count == 0:
                 x = x / numpy.linalg.norm(x)
                 if (i > self.min_iter) and (self.get_delta(old_x, x) > self.eps):
                     break
+            i += 1
 
         v: numpy.ndarray = x / numpy.linalg.norm(x)
         u: numpy.ndarray = a * v
@@ -101,9 +105,10 @@ class SVDSimple:
         U = []
         S = []
         V = []
+        timeout = self.max_time / k
 
         for i in range(k):
-            u, sigma, v = self.get_singular_value(a)
+            u, sigma, v = self.get_singular_value(a, timeout)
             U.append(u.T)
             S.append(sigma)
             V.append(v.T)
@@ -112,6 +117,43 @@ class SVDSimple:
         s.U = numpy.matrix(numpy.stack(U, axis=0), dtype=numpy.float32).T
         s.S = numpy.array(S, dtype=numpy.float32)
         s.Vh = numpy.matrix(numpy.stack(V, axis=0), dtype=numpy.float32)
+        return s
+
+
+class SVDAdvanced:
+    # source https://www.degruyter.com/document/doi/10.1515/jisys-2018-0034/html
+
+    def __init__(self, tol: numpy.float32 = numpy.float32(0.001), max_time: float = 100) -> None:
+        self.tol = tol
+        self.max_time = max_time
+        self.norm_iter = 10
+
+    def svd(self, a: numpy.matrix, k: int) -> SVDdata:
+        end_t = time.time() + self.max_time
+        n = a.shape[0]
+        m = a.shape[1]
+        s: SVDdata = SVDdata()
+        err = self.tol + 1
+
+        v: numpy.matrix = numpy.matrix([numpy.random.normal(0, 1, size=m) for _ in range(k)]).T
+        sigm: numpy.matrix
+        u: numpy.matrix
+        while time.time() < end_t:
+            q, r = numpy.linalg.qr(a * v)
+            u = numpy.matrix(q[:, 0:k], dtype=numpy.float32)
+
+            q, r = numpy.linalg.qr(a.T * u)
+            v = numpy.matrix(q[:, 0:k], dtype=numpy.float32)
+
+            sigm = numpy.matrix(numpy.diag([r[i, i] for i in range(k)]), dtype=numpy.float32)
+            err = numpy.linalg.norm(a * v - u * sigm)
+            if err < self.tol:
+                break
+
+        s.U = u
+        s.Vh = v.T
+        s.S = numpy.diagonal(sigm)
+
         return s
 
 
@@ -209,11 +251,7 @@ class CompressedData:
             return CompressedData.deserialize(f.read())
 
 
-def compress(
-    img: PIL.Image.Image,
-    dst_size: int,
-    svder: SVDer,
-) -> CompressedData:
+def compress(img: PIL.Image.Image, dst_size: int, svder: SVDer) -> CompressedData:
     n, m = img.size
 
     if img.palette is not None:
@@ -237,8 +275,11 @@ def compress(
     svddatas: list[SVDdata] = []
 
     for m in matrixs:
+        start_t = time.time()
         s = svder.svd(m, k)  # U S Vh
+        print(f"Time spent on the SVD algorithm: { time.time()-start_t}s")
         svddatas.append(s)
+        # print(f"err: {numpy.linalg.norm(m * s.Vh.T - s.U * numpy.diag(s.S))}")
 
     return CompressedData.new(svddatas, img.mode)
 
@@ -279,6 +320,7 @@ def parse_args() -> Dict[str, Any]:
         help=f"{METHOD_NUMPY}/{METHOD_SIMPLE}/{METHOD_ADVANCED}; Choose SVD method",
     )
     parser.add_argument("--compression", type=int, default=4, help="How many times to compress the image")
+    parser.add_argument("--time", type=float, default=10, help="Timeout for simple and advance svd algo")
     return parser.parse_args().__dict__
 
 
@@ -301,9 +343,9 @@ def main():
         if method_str == METHOD_NUMPY:
             svder = SVDStadartLibrary()
         elif method_str == METHOD_SIMPLE:
-            svder = SVDSimple(is_multistart=True)
+            svder = SVDSimple(is_multistart=False, max_time=args["time"])
         elif method_str == METHOD_ADVANCED:
-            ...
+            svder = SVDAdvanced(max_time=args["time"])
         else:
             print(f"METHOD={method_str} is not supported")
             exit(1)
