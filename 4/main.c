@@ -16,7 +16,7 @@ typedef struct _thomas_solver_t {
 double* run_thomas(thomas_solver_t* solver, double* y) {
     double* a = solver->a;
     double* b = solver->b;
-    double* c = solver->d;
+    double* c = solver->c;
     double* d = solver->d;
     size_t n = solver->n;
 
@@ -35,16 +35,16 @@ double* run_thomas(thomas_solver_t* solver, double* y) {
     return y;
 }
 
-typedef struct _solve_t {
+typedef struct _solution_t {
     double* x;
     double* y;
     double h;
 
     size_t n;
-} solve_t;
+} solution_t;
 
-solve_t* create_solve_t(double* x, double* y, size_t n) {
-    solve_t* solve = malloc(sizeof(*solve));
+solution_t* create_solution_t(double* x, double* y, size_t n) {
+    solution_t* solve = malloc(sizeof(*solve));
     solve->x = x;
     solve->y = y;
     solve->n = n;
@@ -53,14 +53,14 @@ solve_t* create_solve_t(double* x, double* y, size_t n) {
     return solve;
 }
 
-void free_solve_t(solve_t* s, char del_xs) {
+void free_solution_t(solution_t* s, char del_xs) {
     if (del_xs)
         free(s->x);
     free(s->y);
     free(s);
 }
 
-double phi(solve_t* s, size_t i, double x) {
+double phi(solution_t* s, size_t i, double x) {
     if (i == 0) {
         if ((s->x[0] <= x) && (x <= s->x[1]))
             return (s->x[1] - x) / s->h;
@@ -81,7 +81,7 @@ double phi(solve_t* s, size_t i, double x) {
     }
 }
 
-double function(solve_t* s, double x) {
+double function(solution_t* s, double x) {
     size_t l = 0;
     size_t r = s->n;
 
@@ -208,7 +208,7 @@ double dot_metric_f_and_phi(fem_solver_t* solv, int i) {
            pow(h, 2);
 }
 
-solve_t* run_fem(fem_solver_t* s) {
+solution_t* run_fem(fem_solver_t* s) {
     thomas_solver_t ts;
     ts.n = s->N - 1;
     ts.a = calloc(ts.n, sizeof(double));
@@ -229,7 +229,7 @@ solve_t* run_fem(fem_solver_t* s) {
     y[0] = 0;
     y[s->N] = 0;
 
-    return create_solve_t(s->x, y, s->N);
+    return create_solution_t(s->x, y, s->N);
 }
 
 #define M_PI 3.14159265358979323846
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
 
     fem_solver_t* fs = create_fem_solver_t(lambda, l, n);
 
-    solve_t* s = run_fem(fs);
+    solution_t* s = run_fem(fs);
 
     int nn = 10;
     double nh = l / nn;
