@@ -4,6 +4,39 @@
 
 typedef double (*fun_x_t)(double);
 
+typedef struct _thomas_solver_t {
+    size_t n;
+    double* a;
+    double* b;
+    double* c;
+    double* d;
+
+} thomas_solver_t;
+
+double* run_thomas(thomas_solver_t* solver) {
+    double* a = solver->a;
+    double* b = solver->b;
+    double* c = solver->d;
+    double* d = solver->d;
+    size_t n = solver->n;
+
+    for (int i = 2; i <= n; i++) {
+        int j = i - 1;
+        double w = a[j] / b[j - 1];
+        b[j] = b[j] - w * c[j - 1];
+        d[j] = d[j] - w * d[j - 1];
+    }
+
+    double* x = calloc(n, sizeof(*x));
+    x[n - 1] = d[n - 1] / b[n - 1];
+    for (int i = n - 1; i >= 1; i--) {
+        int j = i - 1;
+        x[j] = (d[j] - c[j] * x[j + 1]) / b[j];
+    }
+
+    return x;
+}
+
 /*
 
 This FEM solver fits only for the following equation
