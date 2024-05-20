@@ -13,7 +13,7 @@ typedef struct _thomas_solver_t {
 
 } thomas_solver_t;
 
-double* run_thomas(thomas_solver_t* solver) {
+double* run_thomas(thomas_solver_t* solver, double* y) {
     double* a = solver->a;
     double* b = solver->b;
     double* c = solver->d;
@@ -27,14 +27,12 @@ double* run_thomas(thomas_solver_t* solver) {
         d[j] = d[j] - w * d[j - 1];
     }
 
-    double* x = calloc(n, sizeof(*x));
-    x[n - 1] = d[n - 1] / b[n - 1];
+    y[n - 1] = d[n - 1] / b[n - 1];
     for (int i = n - 1; i >= 1; i--) {
         int j = i - 1;
-        x[j] = (d[j] - c[j] * x[j + 1]) / b[j];
+        y[j] = (d[j] - c[j] * y[j + 1]) / b[j];
     }
-
-    return x;
+    return y;
 }
 
 typedef struct _solve_t {
@@ -210,4 +208,47 @@ double dot_metric_f_and_phi(fem_solver_t* solv, int i) {
            pow(h, 2);
 }
 
-int main(int argc, char** argv) {}
+solve_t* run_fem(fem_solver_t* s) {
+    thomas_solver_t ts;
+    ts.n = s->N - 1;
+    ts.a = calloc(ts.n, sizeof(double));
+    ts.b = calloc(ts.n, sizeof(double));
+    ts.c = calloc(ts.n, sizeof(double));
+    ts.d = calloc(ts.n, sizeof(double));
+
+    for (int i = 1; i <= s->N - 1; i++) {
+        int j = i - 1;
+        ts.a[j] = dot_metric_A_phi(s, i - 1, i);
+        ts.b[j] = dot_metric_A_phi(s, i, i);
+        ts.c[j] = dot_metric_A_phi(s, i + 1, i);
+        ts.d[j] = dot_metric_f_and_phi(s, i);
+    }
+
+    double* y = calloc(s->N + 1, sizeof(*y));
+    run_thomas(&ts, &y[1]);
+    y[0] = 0;
+    y[s->N] = 0;
+
+    return create_solve_t(s->x, y, s->N);
+}
+
+#define M_PI 3.14159265358979323846
+
+int main(int argc, char** argv) {
+    double lambda = 1;
+    int n = 100;
+    double l = M_PI / sqrt(lambda);
+
+    fem_solver_t* fs = create_fem_solver_t(lambda, l, n);
+
+    solve_t* s = run_fem(fs);
+
+    int nn = 10;
+    double nh = l / nn;
+    for (int i = 0; i < nn; i++) {
+        double x = i * nh;
+        double my_val = function(s, x);
+        double real_val = sin(sqrt(lambda) * x);
+        printf("[x=%f]: real: %f | my: %f\n", x, real_val, my_val);
+    }
+}
