@@ -37,6 +37,68 @@ double* run_thomas(thomas_solver_t* solver) {
     return x;
 }
 
+typedef struct _solve_t {
+    double* x;
+    double* y;
+    double h;
+
+    size_t n;
+} solve_t;
+
+solve_t* create_solve_t(double* x, double* y, size_t n) {
+    solve_t* solve = malloc(sizeof(*solve));
+    solve->x = x;
+    solve->y = y;
+    solve->n = n;
+
+    solve->h = (x[n] - x[0]) / n;
+    return solve;
+}
+
+void free_solve_t(solve_t* s, char del_xs) {
+    if (del_xs)
+        free(s->x);
+    free(s->y);
+    free(s);
+}
+
+double phi(solve_t* s, size_t i, double x) {
+    if (i == 0) {
+        if ((s->x[0] <= x) && (x <= s->x[1]))
+            return (s->x[1] - x) / s->h;
+        else
+            return 0;
+    } else if (i == s->n) {
+        if ((s->x[s->n - 1] <= x) && (x <= s->x[s->n]))
+            return (x - s->x[s->n - 1]) / s->h;
+        else
+            return 0;
+    } else {
+        if ((s->x[i - 1] <= x) && (x <= s->x[i]))
+            return (x - s->x[i - 1]) / s->h;
+        else if ((s->x[i] <= x) && (x <= s->x[i + 1]))
+            return (s->x[i + 1] - x) / s->h;
+        else
+            return 0;
+    }
+}
+
+double function(solve_t* s, double x) {
+    size_t l = 0;
+    size_t r = s->n;
+
+    while (r - l > 1) {
+        size_t mid = (l + r) / 2;
+        if (x > s->x[mid]) {
+            l = mid;
+        } else {
+            r = mid;
+        }
+    }
+
+    return s->y[l] * phi(s, l, x) + s->y[r] * phi(s, r, x);
+}
+
 /*
 
 This FEM solver fits only for the following equation
@@ -78,8 +140,9 @@ fem_solver_t* create_fem_solver_t(double lambda, double l, size_t grid_size) {
     return solver;
 }
 
-void free_fem_solver_t(fem_solver_t* s) {
-    free(s->x);
+void free_fem_solver_t(fem_solver_t* s, char del_xs) {
+    if (del_xs)
+        free(s->x);
     free(s);
 }
 
