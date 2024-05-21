@@ -176,15 +176,13 @@ double dot_metric_A_phi(fem_solver_t* solv, int i, int j) {
                pow(h, 2);
 
     } else if (i + 1 == j) {
-        // https://www.wolframalpha.com/input?i=%281%2F%28i%5E2%29%29+*+%28integrate+%5B-1%2Ba*%28x-b%29*%28c-x%29%5D+dx+from+b+to+c%29&assumption=%22i%22+-%3E+%22Variable%22
-        // (b - (a b^3)/6 - c + 1/2 a b^2 c - 1/2 a b c^2 + (a c^3)/6)/i^2
+        // https://www.wolframalpha.com/input?i=%28integrate+%5B-1+%2B+a*%28x-b%29*%28c-x%29%5D+dx+from+b+to+c%29
+        // -1/6 (-6 + a (b - c)^2) (b - c)
         // i = h
         // a = λ
         // b = x[i]
         // c = x[i+1]
-        return (-(lambda * pow(xi, 3)) / 6 + 1 / 2 * lambda * pow(xi, 2) * xip - 1 / 2 * lambda * xi * pow(xip, 2) +
-                (lambda * pow(xip, 3)) / 6 + xi - xip) /
-               pow(h, 2);
+        return ((-1 / 6.0) * (-6 + lambda * pow((xi - xip), 2)) * (xi - xip)) / pow(h, 2);
     } else {
         return 0;
     }
@@ -197,10 +195,10 @@ double dot_metric_f_and_phi(fem_solver_t* solv, int i) {
     double xi = solv->x[i];
     double xip = solv->x[i + 1];
 
-    // https://www.wolframalpha.com/input?i=%281%2F%28i%5E2%29%29+*%28%28%28integrate+%5B%28x-m%29*%282*a+*+sin%28sqrt%28a%29*x%29%29%5D+dx+from+m+to+b%29%29%2B+%28integrate+%5B%28c-x%29*%282*a*+sin%28sqrt%28a%29*x%29%29%5D+dx+from+b+to+c%29%29&assumption=%22i%22+-%3E+%22Variable%22
+    // https://www.wolframalpha.com/input?i=%281%2F%28i%5E1%29%29+*%28%28%28integrate+%5B%28x-m%29*%282*a+*+sin%28sqrt%28a%29*x%29%29%5D+dx+from+m+to+b%29%29%2B+%28integrate+%5B%28c-x%29*%282*a*+sin%28sqrt%28a%29*x%29%29%5D+dx+from+b+to+c%29%29&assumption=%22i%22+-%3E+%22Variable%22
     /*
     (2 (-sqrt(a) (b - c) cos(sqrt(a) b) + sin(sqrt(a) b) - sin(sqrt(a) c)) + 2 (-sqrt(a) (b - m) cos(sqrt(a) b) +
-    sin(sqrt(a) b) - sin(sqrt(a) m)))/i^2
+    sin(sqrt(a) b) - sin(sqrt(a) m)))/i
     */
     // i = h
     // a = λ
