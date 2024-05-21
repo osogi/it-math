@@ -93,8 +93,14 @@ double function(solution_t* s, double x) {
             r = mid;
         }
     }
+    double yl = s->y[l];
+    double pl = phi(s, l, x);
+    double yr = s->y[r];
+    double pr = phi(s, r, x);
+    double res = yl * pl + yr * pr;
+    // printf("##############33\n%f * %f + \n%f * %f = \n%f\n", yl, pl, yr, pr, res);
 
-    return s->y[l] * phi(s, l, x) + s->y[r] * phi(s, r, x);
+    return res;
 }
 
 /*
@@ -148,7 +154,7 @@ double dot_metric_A_phi(fem_solver_t* solv, int i, int j) {
     if (i > j) {
         int buf = i;
         i = j;
-        j = i;
+        j = buf;
     }
 
     double h = solv->h;
@@ -205,7 +211,7 @@ double dot_metric_f_and_phi(fem_solver_t* solv, int i) {
                  sin(xip * sqrt(lambda))) +
             2 * (-sqrt(lambda) * (xi - xim) * cos(xi * sqrt(lambda)) + sin(xi * sqrt(lambda)) -
                  sin(sqrt(lambda) * xim))) /
-           pow(h, 2);
+           pow(h, 1);
 }
 
 solution_t* run_fem(fem_solver_t* s) {
@@ -218,10 +224,21 @@ solution_t* run_fem(fem_solver_t* s) {
 
     for (int i = 1; i <= s->N - 1; i++) {
         int j = i - 1;
-        ts.a[j] = dot_metric_A_phi(s, i - 1, i);
+
+        if (i - 1 >= 1)
+            ts.a[j] = dot_metric_A_phi(s, i - 1, i);
+
+        if (i + 1 < s->N)
+            ts.c[j] = dot_metric_A_phi(s, i + 1, i);
+
         ts.b[j] = dot_metric_A_phi(s, i, i);
-        ts.c[j] = dot_metric_A_phi(s, i + 1, i);
         ts.d[j] = dot_metric_f_and_phi(s, i);
+
+        // printf("[%d]: ###############\n", i);
+        // printf("a = %f\n", ts.a[j]);
+        // printf("b = %f\n", ts.b[j]);
+        // printf("c = %f\n", ts.c[j]);
+        // printf("d = %f\n", ts.d[j]);
     }
 
     double* y = calloc(s->N + 1, sizeof(*y));
