@@ -103,21 +103,6 @@ double function(solution_t* s, double x) {
     return res;
 }
 
-/*
-
-This FEM solver fits only for the following equation
-y'' - λ*y = -2*λ * sin(sqrt(λ)*x)
-
-Решение:
-y = sin(sqrt(λ)*x)
-Тогда:
-p = 1
-q = λ
-f = 2*λ * sin(sqrt(λ)*x)
-
-
-*/
-
 // This FEM solver fits only for the following equation
 // y'' - λ*y = -2*λ * sin(sqrt(λ)*x)
 // y(0) = y(l) = 0
@@ -135,6 +120,8 @@ fem_solver_t* create_fem_solver_t(double lambda, double l, size_t grid_size) {
     solver->N = grid_size - 1;
 
     solver->h = l / (grid_size - 1);
+    if (solver->h > sqrt(6 / lambda))
+        fprintf(stderr, "Warning: h > sqrt(6/λ)\n");
     solver->x = calloc(grid_size, sizeof(*(solver->x)));
     for (int i = 0; i < grid_size; i++) {
         solver->x[i] = solver->h * i;
@@ -244,26 +231,45 @@ solution_t* run_fem(fem_solver_t* s) {
     y[0] = 0;
     y[s->N] = 0;
 
+    free(ts.a);
+    free(ts.b);
+    free(ts.c);
+    free(ts.d);
     return create_solution_t(s->x, y, s->N);
 }
 
 #define M_PI 3.14159265358979323846
 
 int main(int argc, char** argv) {
-    double lambda = 1;
-    int n = 100;
-    double l = M_PI / sqrt(lambda);
+    if (argc < 3) {
+        printf("Using: %s <λ> <grid_size>\n", argv[0]);
+    }
+    double lambda = atof(argv[1]);
+    int n = atof(argv[2]);
+    double l = 4 * M_PI / sqrt(lambda);
 
     fem_solver_t* fs = create_fem_solver_t(lambda, l, n);
-
     solution_t* s = run_fem(fs);
 
-    int nn = 10;
+    double h = fs->h;
+    free_fem_solver_t(fs, 0);
+
+    double max_error = 0.0;
+    int nn = n * 10;
     double nh = l / nn;
     for (int i = 0; i < nn; i++) {
         double x = i * nh;
         double my_val = function(s, x);
         double real_val = sin(sqrt(lambda) * x);
-        printf("[x=%f]: real: %f | my: %f\n", x, real_val, my_val);
+        double err = my_val - real_val;
+        if (err < 0)
+            err = -err;
+
+        if (err > max_error)
+            max_error = err;
+        // printf("[x=%f]: real: %f | my: %f\n", x, real_val, my_val);
     }
+    printf("max_error = %.6f | h^2 = %.6f\n", max_error, pow(h, 2));
+
+    free_solution_t(s, 1);
 }
